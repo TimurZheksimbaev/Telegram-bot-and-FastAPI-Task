@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from config import API_URL, PROD_TELEGRAM_BOT_TOKEN
 
-USER_API_URL = API_URL + "/users"
+USER_API_URL = API_URL + "/api/users"
 
 # Temporarily store user session data with their tokens
 user_sessions = {}

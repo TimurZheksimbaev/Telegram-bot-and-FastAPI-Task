@@ -10,7 +10,7 @@ from authentication.auth import TokenData, verify_token
 templates = Jinja2Templates(directory="templates")
 
 user_router = APIRouter(
-    prefix="/users"
+    prefix="/api/users"
 )
 
 
