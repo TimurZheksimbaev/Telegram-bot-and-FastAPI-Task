@@ -4,12 +4,11 @@ import requests
 import os
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import API_URL, PROD_TELEGRAM_BOT_TOKEN
 
 USER_API_URL = API_URL + "/api/users"
-
 # Temporarily store user session data with their tokens
 user_sessions = {}
 
@@ -34,7 +33,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if response.status_code != 200:
                 await update.message.reply_text("Failed to create user.")
                 return
-
 
         # Using requests to make a POST request to login the user
         response = requests.post(f"{USER_API_URL}/login", params={"telegram_uid": telegram_uid})
@@ -99,7 +97,6 @@ def main():
     # Add callback query handler for inline button actions
     application.add_handler(CallbackQueryHandler(handle_callback))
 
-    print("Bot is starting...")
     # Run the bot
     application.run_polling()
 

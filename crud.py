@@ -8,10 +8,14 @@ from database.models import User
 from config import TOKEN_EXPIRATION
 from fastapi import HTTPException, status
 from authentication.auth import create_access_token
+from logger import create_logger
+
+crud_logger = create_logger("logs/app.log", "crud")
 
 async def login(db: AsyncSession, telegram_uid: str):
     user = await get_user_by_telegram_uid(db, telegram_uid)
     if not user:
+        crud_logger.error(f"Invalid Telegram UID {telegram_uid}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Telegram UID",
@@ -27,6 +31,7 @@ async def login(db: AsyncSession, telegram_uid: str):
 async def logout(db: AsyncSession, telegram_uid: str) -> Dict[str, str]:
     user = await get_user_by_telegram_uid(db, telegram_uid)
     if not user:
+        crud_logger.error(f"Invalid Telegram UID {telegram_uid}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Telegram UID",
@@ -41,6 +46,7 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 10):
         result = await db.execute(select(User).offset(skip).limit(limit))
         return result.scalars().all()
     except NoResultFound:
+        crud_logger.error("No users found")
         return HTTPException(status_code=404, detail="No users found")
 
 async def get_user_by_telegram_uid(db: AsyncSession, telegram_uid: str) -> User | HTTPException:
@@ -48,7 +54,18 @@ async def get_user_by_telegram_uid(db: AsyncSession, telegram_uid: str) -> User 
         result = await db.execute(select(User).where(User.telegram_uid == telegram_uid))
         return result.scalar_one_or_none()
     except NoResultFound:
+        crud_logger.error("No users found")
         return HTTPException(status_code=404, detail="No users found")
+
+async def get_user_by_nickname(db: AsyncSession, nickname: str) -> User | HTTPException:
+    try:
+        result = await db.execute(select(User).where(User.nickname == nickname))
+        return result.scalar_one_or_none()
+    except NoResultFound:
+        crud_logger.error("No users found")
+        return HTTPException(status_code=404, detail="No users found")
+
+
 # Function to create a new user
 async def create_user(db: AsyncSession, user):
     db_user = User(
@@ -73,7 +90,8 @@ async def delete_user(db: AsyncSession, telegram_uid: str):
         await db.commit()
         return True
     except NoResultFound:
-        return False
+        crud_logger.error("No users found")
+        return HTTPException(status_code=404, detail="No users found")
 
 # Function to update user data
 async def update_user(db: AsyncSession, uid: str, new_data: Dict[str, str]):
@@ -89,6 +107,7 @@ async def update_user(db: AsyncSession, uid: str, new_data: Dict[str, str]):
         await db.refresh(user)
         return user
     except NoResultFound:
+        crud_logger.error("No users found")
         return HTTPException(status_code=404, detail="No users found")
 
 async def update_user_rating(db: AsyncSession, uid: str, newRating: int):
@@ -100,6 +119,7 @@ async def update_user_rating(db: AsyncSession, uid: str, newRating: int):
         await db.refresh(user)
         return user
     except NoResultFound:
+        crud_logger.error("No users found")
         return HTTPException(status_code=404, detail="User not found")
 
 async def add_coins(db: AsyncSession, uid: str, coinsAmount: int):
@@ -110,7 +130,8 @@ async def add_coins(db: AsyncSession, uid: str, coinsAmount: int):
         await db.commit()
         await db.refresh(user)
         return user
-    except:
+    except NoResultFound:
+        crud_logger.error("No users found")
         return HTTPException(status_code=404, detail="User not found")
 
 
