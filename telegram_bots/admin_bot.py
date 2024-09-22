@@ -6,11 +6,8 @@ import os
 import sys
 from telegram.error import BadRequest
 
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from scheme import UserUpdate
-from logger import create_logger
 from config import API_URL, ADMIN_TELEGRAM_BOT_TOKEN
 
 ADMIN_API_URL = API_URL + "/api/admin"
@@ -19,8 +16,6 @@ ASK_FOR_NICKNAME, ASK_FOR_UID, START_UPDATE, CHOOSE_FIELD, ENTER_COINS, ENTER_RA
 
 TOKEN = ""
 
-
-admin_bot_logger = create_logger("../logs/app.log", "admin_bot")
 
 keyboard = [
     [InlineKeyboardButton("Open WebApp", web_app=WebAppInfo(url=f"{ADMIN_API_URL}/"))],
@@ -43,6 +38,8 @@ field_markup = InlineKeyboardMarkup(field_keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global TOKEN
+    username = update.effective_user.username
+    create_response = requests.post(f"{API_URL}/api/users/create", json={"nickname": username, "telegram_uid": str(update.effective_user.id)})
     response = requests.post(f"{API_URL}/api/users/login", params={"telegram_uid": update.effective_user.id})
     if response.status_code != 200:
         await update.message.reply_text("You are not logged in.")
@@ -60,10 +57,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ASK_FOR_UID
         case 'all_users':
             await handle_all_users(query)
-            admin_bot_logger.info(f"User{query.from_user.username} requested all users.")
         case 'stats':
             await handle_stats(query)
-            admin_bot_logger.info(f"User{query.from_user.username} requested stats.")
         case 'user_by_nickname':
             await query.edit_message_text("Enter Nickname:")
             return ASK_FOR_NICKNAME
@@ -75,86 +70,76 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """User info"""
 async def handle_user_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global TOKEN
-    try:
-        telegram_uid = update.message.text
-        await update.message.reply_text(f"Fetching user info for UID: {telegram_uid}...")
-        response = requests.get(f"{ADMIN_API_URL}/get_user_by_uid/{telegram_uid}", headers={
-            "Authorization": f"Bearer {TOKEN}"
-        })
-        if response.status_code == 200:
-            user = response.json()
-            message = f"User info:\n" \
-                      f"Nickname: {user['nickname']}\n" \
-                      f"Rating: {user['rating']}\n" \
-                      f"Coins: {user['coins']}\n" \
-                      f"Last login: {user['last_login']}"
-            await update.message.reply_text(message, reply_markup=reply_markup)
-        else:
-            await update.message.reply_text("Failed to get user info.")
-    except BadRequest as e:
-        admin_bot_logger.error(f"Failed to get user info: {e}")
-
+    telegram_uid = update.message.text
+    await update.message.reply_text(f"Fetching user info for UID: {telegram_uid}...")
+    response = requests.get(f"{ADMIN_API_URL}/get_user_by_uid/{telegram_uid}", headers={
+        "Authorization": f"Bearer {TOKEN}"
+    })
+    if response.status_code == 200:
+        user = response.json()
+        message = f"User info:\n" \
+                  f"Nickname: {user['nickname']}\n" \
+                  f"Rating: {user['rating']}\n" \
+                  f"Coins: {user['coins']}\n" \
+                  f"Last login: {user['last_login']}"
+        await update.message.reply_text(message, reply_markup=reply_markup)
+    else:
+        await update.message.reply_text("Failed to get user info.")
     return ConversationHandler.END
 
 """All Users"""
 async def handle_all_users(query):
     global TOKEN
-    try:
-        response = requests.get(f"{ADMIN_API_URL}/get_users", headers={
-            "Authorization": f"Bearer {TOKEN}"
-        })
-        if response.status_code == 200:
-            users = response.json()
-            message = "All users:\n"
-            for user in users:
-                message += f"Nickname: {user['nickname']}\n" \
-                           f"Rating: {user['rating']}\n" \
-                           f"Coins: {user['coins']}\n" \
-                           f"Last login: {user['last_login']}\n\n"
-            await query.edit_message_text(message)
-            await query.edit_message_reply_markup(reply_markup)
-        else:
-            await query.edit_message_text("Failed to get all users.")
-    except BadRequest as e:
-        admin_bot_logger.error(f"Failed to get all users: {e}")
+
+    response = requests.get(f"{ADMIN_API_URL}/get_users", headers={
+        "Authorization": f"Bearer {TOKEN}"
+    })
+    if response.status_code == 200:
+        users = response.json()
+        message = "All users:\n"
+        for user in users[:10]:
+            message += f"Nickname: {user['nickname']}\n" \
+                       f"Rating: {user['rating']}\n" \
+                       f"Coins: {user['coins']}\n" \
+                       f"Last login: {user['last_login']}\n\n" \
+                       f"and many more..."
+        await query.edit_message_text(message)
+        await query.edit_message_reply_markup(reply_markup)
+    else:
+        await query.edit_message_text("Failed to get all users.")
+
 
 """Stats"""
 async def handle_stats(query):
     global TOKEN
-    try:
-        response = requests.get(f"{ADMIN_API_URL}/stats", headers={
-            "Authorization": f"Bearer {TOKEN}"
-        })
-        if response.status_code == 200:
-            stats = response.json()
-            message = f"Total users: {stats['total_users']}\n" \
-                      f"Online users: {stats['online_users']}\n" \
-                      f"High rating users: {stats['high_rating_users_count']}"
-            await query.edit_message_text(message)
-            await query.edit_message_reply_markup(reply_markup)
-        else:
-            await query.edit_message_text("Failed to get stats.")
-
-    except BadRequest as e:
-        admin_bot_logger.error(f"Failed to get stats: {e}")
+    response = requests.get(f"{ADMIN_API_URL}/stats", headers={
+        "Authorization": f"Bearer {TOKEN}"
+    })
+    if response.status_code == 200:
+        stats = response.json()
+        message = f"Total users: {stats['total_users']}\n" \
+                  f"Online users: {stats['online_users']}\n" \
+                  f"High rating users: {stats['high_rating_users_count']}"
+        await query.edit_message_text(message)
+        await query.edit_message_reply_markup(reply_markup)
+    else:
+        await query.edit_message_text("Failed to get stats.")
 
 """Get user by nickname"""
 async def handle_user_by_nickname(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global TOKEN
-    try:
-        username = update.message.text
-        response = requests.get(f"{ADMIN_API_URL}/get_user_by_nickname/{username}", headers={
-            "Authorization": f"Bearer {TOKEN}"
-        })
-        if response.status_code == 200:
-            user = response.json()
-            message = f"Nickname: {user['nickname']}\n" \
-                      f"UID: {user['telegram_uid']}\n"
-            await update.message.reply_text(message, reply_markup=reply_markup)
-        else:
-            await update.message.reply_text("Failed to get user by nickname.")
-    except BadRequest as e:
-        admin_bot_logger.error(f"Failed to get user by nickname: {e}")
+    username = update.message.text
+    response = requests.get(f"{ADMIN_API_URL}/get_user_by_nickname/{username}", headers={
+        "Authorization": f"Bearer {TOKEN}"
+    })
+    if response.status_code == 200:
+        user = response.json()
+        message = f"Nickname: {user['nickname']}\n" \
+                  f"UID: {user['telegram_uid']}\n"
+        await update.message.reply_text(message, reply_markup=reply_markup)
+    else:
+        await update.message.reply_text("Failed to get user by nickname.")
+
     return ConversationHandler.END
 
 
@@ -181,6 +166,7 @@ async def choose_field(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return CONFIRM_CHANGES
     elif query.data == 'cancel':
         await query.edit_message_text("Update canceled.")
+        await query.edit_message_reply_markup(reply_markup)
         return ConversationHandler.END
 
 # Handler to collect coins input
@@ -209,22 +195,16 @@ async def enter_rating(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def confirm_changes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global TOKEN
     uid = context.user_data['uid']
-    changes = {
-        'coins': context.user_data.get('coins'),
-        'rating': context.user_data.get('rating')
-    }
+    data = {}
+    if 'coins' in context.user_data:
+        data['coins'] = int(context.user_data['coins'])
+    if 'rating' in context.user_data:
+        data['rating'] = int(context.user_data['rating'])
 
-    # Filter out None values
-    changes = {k: v for k, v in changes.items() if v is not None}
-
-    user = UserUpdate(
-        coins=changes['coins'],
-        rating=changes['rating']
-    )
     query = update.callback_query
     # Send the update request to the backend
     try:
-        response = requests.put(f"{ADMIN_API_URL}/update_user/{uid}", data=user, headers={
+        response = requests.put(f"{ADMIN_API_URL}/update_user/{uid}", json=data, headers={
             "Authorization": "Bearer " + TOKEN,
         })
         if response.status_code == 200:
@@ -232,12 +212,12 @@ async def confirm_changes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.edit_message_text("Failed to update user.", reply_markup=reply_markup)
     except BadRequest as e:
-        admin_bot_logger.error(f"Failed to update user: {e}")
         await query.edit_message_text("An error occurred while updating the user.", reply_markup=reply_markup)
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Operation cancelled.")
+    await update.message.reply_text("Choose operation", reply_markup=reply_markup)
     return ConversationHandler.END
 
 
@@ -266,7 +246,7 @@ def main():
     # Add callback query handler for inline button actions
     application.add_handler(CallbackQueryHandler(handle_callback))
 
-    admin_bot_logger.info("Starting admin bot...")
+    print("Starting admin bot...")
     # Run the bot
     application.run_polling()
 

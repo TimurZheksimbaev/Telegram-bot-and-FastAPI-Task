@@ -3,8 +3,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 import requests
 import os
 import sys
-
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import API_URL, PROD_TELEGRAM_BOT_TOKEN
 
@@ -26,14 +24,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Check if the user already exists in the database
         username = update.effective_user.username
-        response = requests.get(f"{USER_API_URL}/info/{telegram_uid}")
-        if not response.json():
-            # if no use then create
-            response = requests.post(f"{USER_API_URL}/create", json={"nickname": username, "telegram_uid": telegram_uid})
-            if response.status_code != 200:
-                await update.message.reply_text("Failed to create user.")
-                return
-
+        # if no use then create
+        response = requests.post(f"{USER_API_URL}/create", json={"nickname": username, "telegram_uid": telegram_uid})
         # Using requests to make a POST request to login the user
         response = requests.post(f"{USER_API_URL}/login", params={"telegram_uid": telegram_uid})
         if response.status_code == 200:
@@ -44,8 +36,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Login successful! Choose an option:", reply_markup=reply_markup)
         else:
             await update.message.reply_text("Login failed. Please try again.")
+
     except Exception as e:
-        await update.message.reply_text(f"Error during login: {str(e)}")
+        await update.message.reply_text(f"Error during login: {e}")
 
 # Callback query handler for stats, create user, and logout
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,7 +89,7 @@ def main():
 
     # Add callback query handler for inline button actions
     application.add_handler(CallbackQueryHandler(handle_callback))
-
+    print("Starting user bot...")
     # Run the bot
     application.run_polling()
 
