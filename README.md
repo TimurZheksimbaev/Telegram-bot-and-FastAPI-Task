@@ -1,6 +1,11 @@
 # Fastapi and Telegram bot app
 
 ### Для запуска всех процессов вам потребуется 4 вкладки терминала
+### Клонируем проект
+```bash
+git clone https://github.com/TimurZheksimbaev/Telegram-bot-and-FastAPI-Task.git
+```
+
 ### Для начала установите `ngrok`, если его нет, он нужен для WebApp, она требует https сервер 
 ### Если есть, запустите следующую команду
 ```bash
