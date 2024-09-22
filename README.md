@@ -52,3 +52,4 @@ python3 admin_bot.py
 
 ### Документация - http://localhost:8000/docs
 ### Описание тестового задания - https://docs.google.com/document/d/1i9YTAuyxFbp4eMciHgx0coXZpdkxZilkhbzSGCKMPJ4/edit
+Прошу прощения, что не использовал docker в этом проекте, я столкнулся с множеством проблем в ходе разборки с докером, и уже не успевал до дедлайна.
